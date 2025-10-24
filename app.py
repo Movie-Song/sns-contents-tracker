@@ -101,9 +101,27 @@ def create_heatmap(df_counts):
     df_calendar["Weekday"] = df_calendar.index.weekday
     df_calendar["WeekIndex"] = ((df_calendar.index - start_date).days // 7).astype(int)
     
+    st.write(f"📊 DEBUG: Count > 0인 날짜들:")
+    non_zero = df_calendar[df_calendar["Count"] > 0]
+    for idx in non_zero.index:
+        st.write(f"  - {idx.date()}: Count={int(non_zero.loc[idx, 'Count'])}, Weekday={int(non_zero.loc[idx, 'Weekday'])}, Week={int(non_zero.loc[idx, 'WeekIndex'])}")
+    
     # 피벗 테이블
     pivot = df_calendar.pivot(index="Weekday", columns="WeekIndex", values="Count")
     pivot = pivot.clip(upper=5)
+    
+    st.write(f"📊 DEBUG: Pivot 테이블 크기: {pivot.shape}")
+    st.write(f"📊 DEBUG: Pivot에서 0보다 큰 값 개수: {(pivot > 0).sum().sum()}")
+    st.write(f"📊 DEBUG: Pivot 최대값: {pivot.max().max()}")
+    
+    # 샘플 출력
+    if (pivot > 0).sum().sum() > 0:
+        st.write("📊 DEBUG: 0보다 큰 값들의 위치:")
+        for row_idx in pivot.index:
+            for col_idx in pivot.columns:
+                val = pivot.loc[row_idx, col_idx]
+                if val > 0:
+                    st.write(f"  - Row(Weekday)={row_idx}, Col(Week)={col_idx}, Value={val}")
     
     # GitHub 스타일 색상
     colors = ["#EBEDF0", "#9BE9A8", "#40C463", "#30A14E", "#216E39", "#0D4429"]
