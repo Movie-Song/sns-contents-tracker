@@ -85,7 +85,7 @@ class TistoryScraper:
         if date_tuple:
             try:
                 dt = datetime(*date_tuple[:6])
-                return dt.strftime("%Y-%m-%d")
+                return dt.strftime("%Y-%m-%dT%H:%M:%S")
             except:
                 pass
         
