@@ -38,27 +38,36 @@ st.markdown("""
 st.title("📊 콘텐츠 활동 히트맵")
 st.markdown("---")
 
-@st.cache_data(ttl=3600)  # 1시간 캐시
+@st.cache_data(ttl=3600)
 def load_data():
     """Notion에서 데이터를 불러오고 처리합니다."""
     try:
+        # 디버깅: Secrets 확인
+        st.write("🔍 DEBUG: Secrets 확인 중...")
+        st.write(f"API Key 존재: {'NOTION_API_KEY' in st.secrets}")
+        st.write(f"DB ID 존재: {'DATABASE_ID' in st.secrets}")
+        
         notion = NotionHandler()
         contents = notion.get_all_contents(days=365)
+        
+        # 디버깅: 가져온 데이터 수
+        st.write(f"📊 DEBUG: 가져온 콘텐츠 수: {len(contents)}")
         
         if not contents:
             return pd.DataFrame()
         
-        # DataFrame 생성
         df = pd.DataFrame(contents)
         df['published_date'] = pd.to_datetime(df['published_date'])
         
-        # 날짜별 카운트
         date_counts = df.groupby('published_date').size().reset_index(name='count')
         date_counts = date_counts.set_index('published_date')
         
         return date_counts
     except Exception as e:
         st.error(f"❌ 데이터 로드 실패: {str(e)}")
+        # 상세 에러 출력
+        import traceback
+        st.code(traceback.format_exc())
         return pd.DataFrame()
 
 def create_heatmap(df_counts):
