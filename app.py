@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import matplotlib.patches as mpatches
 from datetime import datetime, timedelta
 import os
 import pytz
@@ -11,7 +10,7 @@ from notion_handler import NotionHandler
 # 서울 타임존 설정
 SEOUL_TZ = pytz.timezone('Asia/Seoul')
 
-# Streamlit Secrets를 환경 변수로 설정 (Streamlit Cloud용)
+# Streamlit Secrets를 환경 변수로 설정
 if "NOTION_API_KEY" in st.secrets:
     os.environ["NOTION_API_KEY"] = st.secrets["NOTION_API_KEY"]
     os.environ["DATABASE_ID"] = st.secrets["DATABASE_ID"]
@@ -39,9 +38,9 @@ st.markdown("""
 st.title("📊 콘텐츠 활동 히트맵")
 st.markdown("---")
 
-@st.cache_data(ttl=86400)  # 24시간(하루) 캐시
+@st.cache_data(ttl=86400)  # 24시간 캐시
 def load_data():
-    """Notion에서 데이터를 불러오고 처리합니다."""
+    """Notion에서 데이터를 불러옵니다."""
     try:
         notion = NotionHandler()
         contents = notion.get_all_contents(days=365)
@@ -52,7 +51,7 @@ def load_data():
         # DataFrame 생성
         df = pd.DataFrame(contents)
         
-        # 날짜 파싱 - 안전한 방법
+        # 날짜 파싱
         df['published_date'] = df['published_date'].apply(
             lambda x: str(x).split('T')[0] if 'T' in str(x) else str(x)
         )
@@ -69,79 +68,52 @@ def load_data():
         return pd.DataFrame()
 
 def create_heatmap(df_counts):
-    """GitHub 스타일의 히트맵을 생성합니다."""
-    # 서울 시간 기준 오늘 날짜
+    """GitHub 스타일의 히트맵을 생성합니다 (가로 레이아웃)."""
+    # 서울 시간 기준
     seoul_now = datetime.now(SEOUL_TZ)
     end_date = pd.Timestamp(year=seoul_now.year, month=seoul_now.month, day=seoul_now.day)
     start_date = end_date - pd.Timedelta(days=364)
     
-    st.write(f"🕐 DEBUG: 서울 현재 시각 = {seoul_now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
-    st.write(f"📅 DEBUG: 히트맵 날짜 범위 = {start_date.date()} ~ {end_date.date()}")
-    
     date_range = pd.date_range(start=start_date, end=end_date, freq="D")
     
-    # 달력용 DataFrame 생성
+    # 달력 DataFrame
     df_calendar = pd.DataFrame(index=date_range)
     df_calendar["Count"] = 0
     
     # Notion 데이터 반영
-    matched_count = 0
-    st.write(f"📊 DEBUG: Notion 데이터 날짜들:")
     for date_i, row in df_counts.iterrows():
-        st.write(f"  - {date_i.date()}: {row['count']}개")
         if date_i in df_calendar.index:
             df_calendar.loc[date_i, "Count"] = row["count"]
-            matched_count += 1
-        else:
-            st.write(f"    ⚠️ 히트맵 범위 밖!")
-    
-    st.write(f"📊 DEBUG: 매칭 성공: {matched_count}/{len(df_counts)}")
     
     # 요일과 주 계산
     df_calendar["Weekday"] = df_calendar.index.weekday
     df_calendar["WeekIndex"] = ((df_calendar.index - start_date).days // 7).astype(int)
     
-    st.write(f"📊 DEBUG: Count > 0인 날짜들:")
-    non_zero = df_calendar[df_calendar["Count"] > 0]
-    for idx in non_zero.index:
-        st.write(f"  - {idx.date()}: Count={int(non_zero.loc[idx, 'Count'])}, Weekday={int(non_zero.loc[idx, 'Weekday'])}, Week={int(non_zero.loc[idx, 'WeekIndex'])}")
-    
-    # 피벗 테이블
+    # 피벗 테이블 (행=요일, 열=주차)
     pivot = df_calendar.pivot(index="Weekday", columns="WeekIndex", values="Count")
+    pivot = pivot.fillna(0)
     pivot = pivot.clip(upper=5)
-    
-    st.write(f"📊 DEBUG: Pivot 테이블 크기: {pivot.shape}")
-    st.write(f"📊 DEBUG: Pivot에서 0보다 큰 값 개수: {(pivot > 0).sum().sum()}")
-    st.write(f"📊 DEBUG: Pivot 최대값: {pivot.max().max()}")
-    
-    # 샘플 출력
-    if (pivot > 0).sum().sum() > 0:
-        st.write("📊 DEBUG: 0보다 큰 값들의 위치:")
-        for row_idx in pivot.index:
-            for col_idx in pivot.columns:
-                val = pivot.loc[row_idx, col_idx]
-                if val > 0:
-                    st.write(f"  - Row(Weekday)={row_idx}, Col(Week)={col_idx}, Value={val}")
     
     # GitHub 스타일 색상
     colors = ["#EBEDF0", "#9BE9A8", "#40C463", "#30A14E", "#216E39", "#0D4429"]
     cmap = mcolors.ListedColormap(colors)
-    boundaries = [0, 1, 2, 3, 4, 5, 6]
+    boundaries = [0, 0.5, 1.5, 2.5, 3.5, 4.5, 5.5]
     norm = mcolors.BoundaryNorm(boundaries, ncolors=cmap.N)
     
-    # 그림 생성
-    fig, ax = plt.subplots(figsize=(18, 3.5))
+    # 작은 셀 크기로 히트맵 그리기
+    # 53주 × 7요일 = 가로로 길게
+    fig, ax = plt.subplots(figsize=(16, 2.5))
     
-    # 히트맵 그리기
-    ax.pcolormesh(pivot, cmap=cmap, norm=norm, edgecolors="white", linewidth=1.5)
+    # 히트맵
+    mesh = ax.pcolormesh(pivot, cmap=cmap, norm=norm, edgecolors="white", linewidth=1)
     
-    # 정사각형 셀
+    # 정사각형 셀 (작게)
     ax.set_aspect('equal')
     
     # 요일 레이블 (왼쪽)
     weekday_labels = ['', 'Mon', '', 'Wed', '', 'Fri', '']
     ax.set_yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5])
-    ax.set_yticklabels(weekday_labels, fontsize=9, ha='right')
+    ax.set_yticklabels(weekday_labels, fontsize=8, ha='right')
     ax.tick_params(left=False, bottom=False)
     
     # 월 레이블 (상단)
@@ -163,7 +135,7 @@ def create_heatmap(df_counts):
     ax2 = ax.twiny()
     ax2.set_xlim(ax.get_xlim())
     ax2.set_xticks(month_positions)
-    ax2.set_xticklabels(month_labels, fontsize=9)
+    ax2.set_xticklabels(month_labels, fontsize=8)
     ax2.tick_params(top=False)
     
     # 하단 x축 제거
@@ -193,19 +165,19 @@ if df_counts.empty:
 
 # 히트맵 생성 및 표시
 fig, df_calendar = create_heatmap(df_counts)
-st.pyplot(fig)
+st.pyplot(fig, use_container_width=False)
 
-# 하단 캡션 (Less ~ More)
+# 하단 캡션
 st.markdown("""
-    <div style='text-align: center; margin-top: -20px; margin-bottom: 20px;'>
-        <span style='font-size: 12px; color: #586069;'>Less</span>
-        <span style='display: inline-block; width: 12px; height: 12px; background-color: #EBEDF0; margin: 0 3px; border: 1px solid #d1d5da;'></span>
-        <span style='display: inline-block; width: 12px; height: 12px; background-color: #9BE9A8; margin: 0 3px; border: 1px solid #d1d5da;'></span>
-        <span style='display: inline-block; width: 12px; height: 12px; background-color: #40C463; margin: 0 3px; border: 1px solid #d1d5da;'></span>
-        <span style='display: inline-block; width: 12px; height: 12px; background-color: #30A14E; margin: 0 3px; border: 1px solid #d1d5da;'></span>
-        <span style='display: inline-block; width: 12px; height: 12px; background-color: #216E39; margin: 0 3px; border: 1px solid #d1d5da;'></span>
-        <span style='display: inline-block; width: 12px; height: 12px; background-color: #0D4429; margin: 0 3px; border: 1px solid #d1d5da;'></span>
-        <span style='font-size: 12px; color: #586069;'>More</span>
+    <div style='text-align: center; margin-top: 10px; margin-bottom: 20px;'>
+        <span style='font-size: 11px; color: #586069; margin-right: 5px;'>Less</span>
+        <span style='display: inline-block; width: 10px; height: 10px; background-color: #EBEDF0; margin: 0 2px; border: 1px solid #d1d5da;'></span>
+        <span style='display: inline-block; width: 10px; height: 10px; background-color: #9BE9A8; margin: 0 2px; border: 1px solid #d1d5da;'></span>
+        <span style='display: inline-block; width: 10px; height: 10px; background-color: #40C463; margin: 0 2px; border: 1px solid #d1d5da;'></span>
+        <span style='display: inline-block; width: 10px; height: 10px; background-color: #30A14E; margin: 0 2px; border: 1px solid #d1d5da;'></span>
+        <span style='display: inline-block; width: 10px; height: 10px; background-color: #216E39; margin: 0 2px; border: 1px solid #d1d5da;'></span>
+        <span style='display: inline-block; width: 10px; height: 10px; background-color: #0D4429; margin: 0 2px; border: 1px solid #d1d5da;'></span>
+        <span style='font-size: 11px; color: #586069; margin-left: 5px;'>More</span>
     </div>
 """, unsafe_allow_html=True)
 
@@ -252,4 +224,4 @@ if st.button("🔄 데이터 새로고침"):
 # 푸터
 st.markdown("---")
 seoul_now = datetime.now(SEOUL_TZ)
-st.caption(f"💡 Notion 데이터베이스와 자동 동기화됩니다. (24시간 캐시) | 🕐 서울 기준 시각: {seoul_now.strftime('%Y-%m-%d %H:%M:%S')}")
+st.caption(f"💡 Notion 데이터베이스와 자동 동기화됩니다. (24시간 캐시) | 🕐 서울 기준: {seoul_now.strftime('%Y-%m-%d %H:%M')}")
