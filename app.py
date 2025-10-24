@@ -75,6 +75,9 @@ def create_heatmap(df_counts):
     end_date = pd.Timestamp(year=seoul_now.year, month=seoul_now.month, day=seoul_now.day)
     start_date = end_date - pd.Timedelta(days=364)
     
+    st.write(f"🕐 DEBUG: 서울 현재 시각 = {seoul_now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    st.write(f"📅 DEBUG: 히트맵 날짜 범위 = {start_date.date()} ~ {end_date.date()}")
+    
     date_range = pd.date_range(start=start_date, end=end_date, freq="D")
     
     # 달력용 DataFrame 생성
@@ -82,9 +85,17 @@ def create_heatmap(df_counts):
     df_calendar["Count"] = 0
     
     # Notion 데이터 반영
+    matched_count = 0
+    st.write(f"📊 DEBUG: Notion 데이터 날짜들:")
     for date_i, row in df_counts.iterrows():
+        st.write(f"  - {date_i.date()}: {row['count']}개")
         if date_i in df_calendar.index:
             df_calendar.loc[date_i, "Count"] = row["count"]
+            matched_count += 1
+        else:
+            st.write(f"    ⚠️ 히트맵 범위 밖!")
+    
+    st.write(f"📊 DEBUG: 매칭 성공: {matched_count}/{len(df_counts)}")
     
     # 요일과 주 계산
     df_calendar["Weekday"] = df_calendar.index.weekday
