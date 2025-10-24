@@ -12,3 +12,6 @@ numpy>=1.26.3
 # Streamlit 앱용
 streamlit>=1.29.0
 matplotlib>=3.8.2
+
+# 타임존 처리
+pytz>=2023.3
