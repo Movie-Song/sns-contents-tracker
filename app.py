@@ -90,10 +90,12 @@ def create_heatmap(df_counts):
     df_calendar = pd.DataFrame(index=date_range)
     df_calendar["Count"] = 0
     
-    # Notion 데이터 반영
+    # Notion 데이터 반영 (날짜를 정규화하여 매칭)
     for date_i, row in df_counts.iterrows():
-        if date_i in df_calendar.index:
-            df_calendar.loc[date_i, "Count"] = row["count"]
+        # 날짜를 시간 정보 없이 정규화
+        date_normalized = pd.Timestamp(year=date_i.year, month=date_i.month, day=date_i.day)
+        if date_normalized in df_calendar.index:
+            df_calendar.loc[date_normalized, "Count"] = row["count"]
     
     # 깃허브 스타일 요일 계산 (일요일=0, 월요일=1, ..., 토요일=6)
     df_calendar["Weekday"] = (df_calendar.index.weekday + 1) % 7
