@@ -69,11 +69,24 @@ def load_data():
         return pd.DataFrame()
 
 def create_heatmap(df_counts):
-    """GitHub 스타일의 히트맵을 생성합니다 (오늘까지만 정확히 표시)."""
-    # 서울 시간 기준
+    """GitHub 스타일의 히트맵을 생성합니다 (오늘이 가장 끝에 오도록)."""
+    # 서울 시간 기준 오늘
     seoul_now = datetime.now(SEOUL_TZ)
     end_date = pd.Timestamp(year=seoul_now.year, month=seoul_now.month, day=seoul_now.day)
-    start_date = end_date - pd.Timedelta(days=364)
+    
+    # 오늘 요일 확인 (0=월요일, 6=일요일)
+    today_weekday = end_date.weekday()
+    
+    # 깃허브 스타일: 일요일을 0으로 변환 (월요일=1, ..., 일요일=0)
+    # Python의 weekday(): 월요일=0, 일요일=6
+    # 깃허브 스타일: 일요일=0, 월요일=1, ..., 토요일=6
+    github_weekday = (today_weekday + 1) % 7
+    
+    # 시작일: 정확히 52주 전의 일요일
+    # 오늘이 속한 주의 일요일을 찾고, 거기서 52주 전
+    days_since_sunday = github_weekday
+    current_week_sunday = end_date - pd.Timedelta(days=days_since_sunday)
+    start_date = current_week_sunday - pd.Timedelta(weeks=52)
     
     date_range = pd.date_range(start=start_date, end=end_date, freq="D")
     
@@ -86,35 +99,18 @@ def create_heatmap(df_counts):
         if date_i in df_calendar.index:
             df_calendar.loc[date_i, "Count"] = row["count"]
     
-    # 요일과 주 계산
-    df_calendar["Weekday"] = df_calendar.index.weekday
+    # 깃허브 스타일 요일 계산 (일요일=0, 월요일=1, ..., 토요일=6)
+    df_calendar["Weekday"] = (df_calendar.index.weekday + 1) % 7
+    
+    # 주 계산 (일요일 기준)
     df_calendar["WeekIndex"] = ((df_calendar.index - start_date).days // 7).astype(int)
     
     # 피벗 테이블 (행=요일, 열=주차)
     pivot = df_calendar.pivot(index="Weekday", columns="WeekIndex", values="Count")
     
-    # GitHub 스타일: 실제 날짜가 없는 셀은 NaN으로 유지
-    # (첫 주 시작 전, 마지막 주 오늘 이후)
-    mask = np.zeros_like(pivot.values, dtype=bool)
-    
-    for week_idx in pivot.columns:
-        for weekday in pivot.index:
-            # 이 셀에 해당하는 실제 날짜 계산
-            days_from_start = week_idx * 7 + weekday
-            cell_date = start_date + pd.Timedelta(days=days_from_start)
-            
-            # 범위를 벗어나면 마스크
-            if cell_date < start_date or cell_date > end_date:
-                mask[weekday, week_idx] = True
-                pivot.iloc[weekday, week_idx] = np.nan
-    
-    # 나머지는 0으로 채우기
+    # 클리핑
     pivot = pivot.fillna(0)
     pivot = pivot.clip(upper=5)
-    
-    # 마스크된 셀은 다시 NaN으로
-    pivot_masked = pivot.copy()
-    pivot_masked = pivot_masked.mask(mask, np.nan)
     
     # GitHub 스타일 색상
     colors = ["#EBEDF0", "#9BE9A8", "#40C463", "#30A14E", "#216E39", "#0D4429"]
@@ -125,14 +121,14 @@ def create_heatmap(df_counts):
     # 작은 셀 크기로 히트맵 그리기
     fig, ax = plt.subplots(figsize=(16, 2.5))
     
-    # 히트맵 (NaN은 자동으로 투명/빈칸)
-    mesh = ax.pcolormesh(pivot_masked, cmap=cmap, norm=norm, edgecolors="white", linewidth=1)
+    # 히트맵
+    mesh = ax.pcolormesh(pivot, cmap=cmap, norm=norm, edgecolors="white", linewidth=1)
     
     # 정사각형 셀
     ax.set_aspect('equal')
     
-    # 요일 레이블 (왼쪽)
-    weekday_labels = ['', 'Mon', '', 'Wed', '', 'Fri', '']
+    # 요일 레이블 (왼쪽) - 깃허브 스타일: Sun, Mon, Tue, Wed, Thu, Fri, Sat
+    weekday_labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     ax.set_yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5])
     ax.set_yticklabels(weekday_labels, fontsize=8, ha='right')
     ax.tick_params(left=False, bottom=False)
