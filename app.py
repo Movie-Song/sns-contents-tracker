@@ -42,7 +42,6 @@ st.markdown("---")
 def load_data():
     """Notion에서 데이터를 불러오고 처리합니다."""
     try:
-        # 디버깅: Secrets 확인
         st.write("🔍 DEBUG: Secrets 확인 중...")
         st.write(f"API Key 존재: {'NOTION_API_KEY' in st.secrets}")
         st.write(f"DB ID 존재: {'DATABASE_ID' in st.secrets}")
@@ -50,25 +49,42 @@ def load_data():
         notion = NotionHandler()
         contents = notion.get_all_contents(days=365)
         
-        # 디버깅: 가져온 데이터 수
         st.write(f"📊 DEBUG: 가져온 콘텐츠 수: {len(contents)}")
         
         if not contents:
             return pd.DataFrame()
         
-        df = pd.DataFrame(contents)
-        df['published_date'] = pd.to_datetime(df['published_date'])
+        # 🆕 데이터 샘플 확인
+        st.write("📝 DEBUG: 첫 번째 데이터 샘플:")
+        st.write(contents[0])
         
+        # DataFrame 생성
+        df = pd.DataFrame(contents)
+        
+        st.write("📊 DEBUG: DataFrame 생성됨")
+        st.write(f"컬럼: {df.columns.tolist()}")
+        st.write(f"첫 번째 published_date 값: {df['published_date'].iloc[0]}")
+        st.write(f"타입: {type(df['published_date'].iloc[0])}")
+        
+        # 날짜 변환 시도
+        df['published_date'] = pd.to_datetime(df['published_date'], errors='coerce')
+        
+        st.write(f"📊 DEBUG: 날짜 변환 후")
+        st.write(f"NaT(널) 개수: {df['published_date'].isna().sum()}")
+        
+        # 날짜별 카운트
         date_counts = df.groupby('published_date').size().reset_index(name='count')
         date_counts = date_counts.set_index('published_date')
+        
+        st.write(f"📊 DEBUG: 최종 date_counts 크기: {len(date_counts)}")
         
         return date_counts
     except Exception as e:
         st.error(f"❌ 데이터 로드 실패: {str(e)}")
-        # 상세 에러 출력
         import traceback
         st.code(traceback.format_exc())
         return pd.DataFrame()
+
 
 def create_heatmap(df_counts):
     """GitHub 스타일의 히트맵을 생성합니다."""
