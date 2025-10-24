@@ -42,7 +42,7 @@ def main():
     tistory_url = "https://pro-editor.tistory.com"
     
     try:
-        tistory = TistoryScraper(tistory_url)
+        tistory = TistoryScraper(tistory_url, blog_name="pro-editor")
         
         # 최근 100개 포스트 가져오기
         print(f"🔍 RSS 피드 수집 중... ({tistory_url}/rss)")
