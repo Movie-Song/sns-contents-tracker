@@ -5,7 +5,7 @@ from typing import List, Dict
 class TistoryScraper:
     """티스토리 블로그의 RSS 피드를 파싱하는 클래스"""
     
-    def __init__(self, blog_url: str):
+    def __init__(self, blog_url: str, blog_name: str = "티스토리"):
         """
         Args:
             blog_url: 티스토리 블로그 URL (예: https://yourblog.tistory.com)
@@ -13,7 +13,7 @@ class TistoryScraper:
         self.blog_url = blog_url.rstrip('/')
         # 티스토리 RSS 피드 URL
         self.rss_url = f"{self.blog_url}/rss"
-        self.platform = "티스토리"
+        self.platform = blog_name
     
     def fetch_posts(self, limit: int = 50) -> List[Dict]:
         """
