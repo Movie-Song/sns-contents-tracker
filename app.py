@@ -4,7 +4,11 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from datetime import datetime, timedelta
 import os
+import pytz
 from notion_handler import NotionHandler
+
+# 서울 타임존 설정
+SEOUL_TZ = pytz.timezone('Asia/Seoul')
 
 # Streamlit Secrets를 환경 변수로 설정 (Streamlit Cloud용)
 if "NOTION_API_KEY" in st.secrets:
@@ -38,45 +42,31 @@ st.markdown("""
 st.title("📊 콘텐츠 활동 히트맵")
 st.markdown("---")
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=86400)  # 24시간(하루) 캐시
 def load_data():
     """Notion에서 데이터를 불러오고 처리합니다."""
     try:
-        st.write("🔍 DEBUG: Secrets 확인 중...")
-        st.write(f"API Key 존재: {'NOTION_API_KEY' in st.secrets}")
-        st.write(f"DB ID 존재: {'DATABASE_ID' in st.secrets}")
-        
         notion = NotionHandler()
         contents = notion.get_all_contents(days=365)
         
-        st.write(f"📊 DEBUG: 가져온 콘텐츠 수: {len(contents)}")
+        st.write(f"📊 DEBUG: Notion에서 가져온 콘텐츠 수: {len(contents)}")
         
         if not contents:
             return pd.DataFrame()
         
-        # 🆕 데이터 샘플 확인
-        st.write("📝 DEBUG: 첫 번째 데이터 샘플:")
-        st.write(contents[0])
-        
         # DataFrame 생성
         df = pd.DataFrame(contents)
         
-        st.write("📊 DEBUG: DataFrame 생성됨")
-        st.write(f"컬럼: {df.columns.tolist()}")
-        st.write(f"첫 번째 published_date 값: {df['published_date'].iloc[0]}")
-        st.write(f"타입: {type(df['published_date'].iloc[0])}")
-        
-        # 날짜 변환 시도
-        df['published_date'] = pd.to_datetime(df['published_date'], errors='coerce')
-        
-        st.write(f"📊 DEBUG: 날짜 변환 후")
-        st.write(f"NaT(널) 개수: {df['published_date'].isna().sum()}")
+        # 날짜 파싱 (타임존 정보 제거 후 날짜만 사용)
+        df['published_date'] = pd.to_datetime(df['published_date']).dt.tz_localize(None).dt.normalize()
         
         # 날짜별 카운트
         date_counts = df.groupby('published_date').size().reset_index(name='count')
         date_counts = date_counts.set_index('published_date')
         
-        st.write(f"📊 DEBUG: 최종 date_counts 크기: {len(date_counts)}")
+        st.write(f"📊 DEBUG: 날짜별 그룹화 후 개수: {len(date_counts)}")
+        if len(date_counts) > 0:
+            st.write(f"📊 DEBUG: 날짜 범위: {date_counts.index.min().date()} ~ {date_counts.index.max().date()}")
         
         return date_counts
     except Exception as e:
@@ -85,12 +75,17 @@ def load_data():
         st.code(traceback.format_exc())
         return pd.DataFrame()
 
-
 def create_heatmap(df_counts):
     """GitHub 스타일의 히트맵을 생성합니다."""
-    # 오늘 기준 지난 365일 날짜 범위 생성
-    end_date = pd.to_datetime("today").normalize()
+    # 서울 시간 기준 오늘 날짜
+    seoul_now = datetime.now(SEOUL_TZ)
+    end_date = pd.Timestamp(year=seoul_now.year, month=seoul_now.month, day=seoul_now.day)
     start_date = end_date - pd.Timedelta(days=364)
+    
+    # 디버깅 정보
+    st.write(f"🕐 DEBUG: 서울 현재 시각 = {seoul_now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    st.write(f"📅 DEBUG: 히트맵 날짜 범위 = {start_date.date()} ~ {end_date.date()}")
+    
     date_range = pd.date_range(start=start_date, end=end_date, freq="D")
     
     # 달력용 DataFrame 생성 (기본 Count = 0)
@@ -98,9 +93,13 @@ def create_heatmap(df_counts):
     df_calendar["Count"] = 0
     
     # Notion 데이터의 Count를 달력 DataFrame에 반영
+    matched_count = 0
     for date_i, row in df_counts.iterrows():
         if date_i in df_calendar.index:
             df_calendar.loc[date_i, "Count"] = row["count"]
+            matched_count += 1
+    
+    st.write(f"📊 DEBUG: 히트맵에 매칭된 날짜 수: {matched_count}/{len(df_counts)}")
     
     # 요일(Weekday)와 주(WeekIndex) 계산
     df_calendar["Weekday"] = df_calendar.index.weekday  # 0: 월요일, 6: 일요일
@@ -187,4 +186,5 @@ if st.button("🔄 데이터 새로고침"):
 
 # 푸터
 st.markdown("---")
-st.caption("💡 Notion 데이터베이스와 자동 동기화됩니다. (1시간 캐시)")
+seoul_now = datetime.now(SEOUL_TZ)
+st.caption(f"💡 Notion 데이터베이스와 자동 동기화됩니다. (24시간 캐시) | 🕐 서울 기준 시각: {seoul_now.strftime('%Y-%m-%d %H:%M:%S')}")
