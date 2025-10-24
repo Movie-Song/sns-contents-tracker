@@ -74,19 +74,15 @@ def create_heatmap(df_counts):
     seoul_now = datetime.now(SEOUL_TZ)
     end_date = pd.Timestamp(year=seoul_now.year, month=seoul_now.month, day=seoul_now.day)
     
-    # 오늘 요일 확인 (0=월요일, 6=일요일)
-    today_weekday = end_date.weekday()
+    # 오늘 기준으로 정확히 1년 전 (365일)
+    start_date = end_date - pd.Timedelta(days=364)
     
-    # 깃허브 스타일: 일요일을 0으로 변환 (월요일=1, ..., 일요일=0)
-    # Python의 weekday(): 월요일=0, 일요일=6
-    # 깃허브 스타일: 일요일=0, 월요일=1, ..., 토요일=6
-    github_weekday = (today_weekday + 1) % 7
-    
-    # 시작일: 정확히 52주 전의 일요일
-    # 오늘이 속한 주의 일요일을 찾고, 거기서 52주 전
-    days_since_sunday = github_weekday
-    current_week_sunday = end_date - pd.Timedelta(days=days_since_sunday)
-    start_date = current_week_sunday - pd.Timedelta(weeks=52)
+    # 시작일을 가장 가까운 일요일로 조정 (거슬러 올라가기)
+    # Python: 월요일=0, 일요일=6
+    start_weekday = start_date.weekday()
+    days_to_sunday = (start_weekday + 1) % 7  # 가장 가까운 일요일까지 거슬러 올라가기
+    if days_to_sunday > 0:
+        start_date = start_date - pd.Timedelta(days=days_to_sunday)
     
     date_range = pd.date_range(start=start_date, end=end_date, freq="D")
     
