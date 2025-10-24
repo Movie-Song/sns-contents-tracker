@@ -3,7 +3,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from datetime import datetime, timedelta
+import os
 from notion_handler import NotionHandler
+
+# Streamlit Secrets를 환경 변수로 설정 (Streamlit Cloud용)
+if "NOTION_API_KEY" in st.secrets:
+    os.environ["NOTION_API_KEY"] = st.secrets["NOTION_API_KEY"]
+    os.environ["DATABASE_ID"] = st.secrets["DATABASE_ID"]
 
 # 페이지 설정
 st.set_page_config(
