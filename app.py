@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+import numpy as np
 from datetime import datetime, timedelta
 import os
 import pytz
@@ -68,7 +69,7 @@ def load_data():
         return pd.DataFrame()
 
 def create_heatmap(df_counts):
-    """GitHub 스타일의 히트맵을 생성합니다 (가로 레이아웃)."""
+    """GitHub 스타일의 히트맵을 생성합니다 (오늘까지만 정확히 표시)."""
     # 서울 시간 기준
     seoul_now = datetime.now(SEOUL_TZ)
     end_date = pd.Timestamp(year=seoul_now.year, month=seoul_now.month, day=seoul_now.day)
@@ -91,8 +92,29 @@ def create_heatmap(df_counts):
     
     # 피벗 테이블 (행=요일, 열=주차)
     pivot = df_calendar.pivot(index="Weekday", columns="WeekIndex", values="Count")
+    
+    # GitHub 스타일: 실제 날짜가 없는 셀은 NaN으로 유지
+    # (첫 주 시작 전, 마지막 주 오늘 이후)
+    mask = np.zeros_like(pivot.values, dtype=bool)
+    
+    for week_idx in pivot.columns:
+        for weekday in pivot.index:
+            # 이 셀에 해당하는 실제 날짜 계산
+            days_from_start = week_idx * 7 + weekday
+            cell_date = start_date + pd.Timedelta(days=days_from_start)
+            
+            # 범위를 벗어나면 마스크
+            if cell_date < start_date or cell_date > end_date:
+                mask[weekday, week_idx] = True
+                pivot.iloc[weekday, week_idx] = np.nan
+    
+    # 나머지는 0으로 채우기
     pivot = pivot.fillna(0)
     pivot = pivot.clip(upper=5)
+    
+    # 마스크된 셀은 다시 NaN으로
+    pivot_masked = pivot.copy()
+    pivot_masked = pivot_masked.mask(mask, np.nan)
     
     # GitHub 스타일 색상
     colors = ["#EBEDF0", "#9BE9A8", "#40C463", "#30A14E", "#216E39", "#0D4429"]
@@ -101,13 +123,12 @@ def create_heatmap(df_counts):
     norm = mcolors.BoundaryNorm(boundaries, ncolors=cmap.N)
     
     # 작은 셀 크기로 히트맵 그리기
-    # 53주 × 7요일 = 가로로 길게
     fig, ax = plt.subplots(figsize=(16, 2.5))
     
-    # 히트맵
-    mesh = ax.pcolormesh(pivot, cmap=cmap, norm=norm, edgecolors="white", linewidth=1)
+    # 히트맵 (NaN은 자동으로 투명/빈칸)
+    mesh = ax.pcolormesh(pivot_masked, cmap=cmap, norm=norm, edgecolors="white", linewidth=1)
     
-    # 정사각형 셀 (작게)
+    # 정사각형 셀
     ax.set_aspect('equal')
     
     # 요일 레이블 (왼쪽)
