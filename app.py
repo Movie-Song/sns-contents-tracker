@@ -57,8 +57,19 @@ def load_data():
         # DataFrame 생성
         df = pd.DataFrame(contents)
         
-        # 날짜 파싱 (타임존 정보 제거 후 날짜만 사용)
-        df['published_date'] = pd.to_datetime(df['published_date']).dt.tz_localize(None).dt.normalize()
+        # 날짜 파싱 - 더 안전한 방법
+        # 1. 문자열에서 날짜 부분만 추출 (YYYY-MM-DD)
+        df['published_date'] = df['published_date'].apply(
+            lambda x: str(x).split('T')[0] if 'T' in str(x) else str(x)
+        )
+        
+        # 2. 날짜로 변환
+        df['published_date'] = pd.to_datetime(df['published_date'], errors='coerce')
+        
+        # 3. 파싱 실패한 행 제거
+        df = df.dropna(subset=['published_date'])
+        
+        st.write(f"📊 DEBUG: 날짜 파싱 후 유효한 행: {len(df)}")
         
         # 날짜별 카운트
         date_counts = df.groupby('published_date').size().reset_index(name='count')
