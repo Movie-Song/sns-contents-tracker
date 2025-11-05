@@ -8,7 +8,7 @@ SNS Content Tracker - 메인 실행 파일
 import os
 from datetime import datetime
 from notion_handler import NotionHandler
-from scrapers import TistoryScraper, TwitterScraper
+from scrapers import TistoryScraper
 
 def main():
     """메인 실행 함수"""
@@ -35,9 +35,9 @@ def main():
     total_errors = 0
     
     # ===========================================
-    # 1. 티스토리 블로그 크롤링
+    # 티스토리 블로그 크롤링
     # ===========================================
-    print("📘 [1/2] 티스토리 블로그 수집 중...")
+    print("📘 티스토리 블로그 수집 중...")
     print("-" * 60)
     
     # GitHub Secrets에서 티스토리 블로그 URL들 가져오기 (여러 블로그 지원)
@@ -100,75 +100,6 @@ def main():
                 print(f"❌ {tistory_url} 스크래핑 실패: {e}")
                 print("   - 블로그 URL이 올바른지 확인해주세요")
                 print("   - 네트워크 연결을 확인해주세요\n")
-                total_errors += 1
-    
-    # ===========================================
-    # 2. 트위터 크롤링
-    # ===========================================
-    print("🐦 [2/2] 트위터 수집 중...")
-    print("-" * 60)
-    
-    # GitHub Secrets에서 트위터 사용자명 가져오기 (여러 계정 지원)
-    twitter_usernames_str = os.getenv('TWITTER_USERNAME')
-    
-    if not twitter_usernames_str:
-        print("⚠️  TWITTER_USERNAME 환경변수가 설정되지 않았습니다.")
-        print("   - GitHub Repository Settings → Secrets → Actions에서")
-        print("   - TWITTER_USERNAME 변수를 추가해주세요")
-        print("   - 여러 계정은 콤마로 구분: account1,account2,account3\n")
-    else:
-        # 콤마로 구분된 계정들을 리스트로 변환 (공백 제거)
-        twitter_usernames = [username.strip() for username in twitter_usernames_str.split(',')]
-        
-        print(f"📋 총 {len(twitter_usernames)}개의 트위터 계정 수집 예정")
-        print(f"   계정 목록: {', '.join(['@' + u for u in twitter_usernames])}\n")
-        
-        # 각 트위터 계정별로 처리
-        for account_idx, twitter_username in enumerate(twitter_usernames, 1):
-            print(f"🐦 [{account_idx}/{len(twitter_usernames)}] @{twitter_username} 처리 중...")
-            print("-" * 40)
-            
-            try:
-                twitter = TwitterScraper(twitter_username)
-                
-                # 최근 100개 트윗 가져오기
-                print(f"🔍 Nitter RSS 피드 수집 중... (@{twitter_username})")
-                tweets = twitter.fetch_posts(limit=100)
-                print(f"📝 RSS에서 {len(tweets)}개 트윗 발견\n")
-                
-                if not tweets:
-                    print("⚠️  수집된 트윗이 없습니다.")
-                    print("   - 트위터 계정명이 올바른지 확인해주세요")
-                    print("   - 최근에 트윗한 내역이 있는지 확인해주세요")
-                    print("   - Nitter 서비스가 정상 작동 중인지 확인해주세요\n")
-                
-                # 각 트윗 처리
-                for i, tweet in enumerate(tweets, 1):
-                    print(f"[{i}/{len(tweets)}] 처리 중: {tweet['title'][:40]}...")
-                    
-                    try:
-                        success = notion.add_content(
-                            title=tweet['title'],
-                            url=tweet['url'],
-                            published_date=tweet['published_date'],
-                            platform=tweet['platform']
-                        )
-                        
-                        if success:
-                            total_new += 1
-                        else:
-                            total_existing += 1
-                            
-                    except Exception as e:
-                        print(f"   ❌ 처리 중 오류: {str(e)}")
-                        total_errors += 1
-                
-                print(f"✅ @{twitter_username} 처리 완료\n")
-                
-            except Exception as e:
-                print(f"❌ @{twitter_username} 스크래핑 실패: {e}")
-                print("   - 네트워크 연결을 확인해주세요")
-                print("   - Nitter 서비스가 정상 작동 중인지 확인해주세요\n")
                 total_errors += 1
     
     # ===========================================
