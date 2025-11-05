@@ -1,7 +1,7 @@
 name: Daily Content Update
 on:
   schedule:
-    # 의미: UTC 15:00 = 한국시간 자정(00:00)
+    # 매일 한국 시간 오전 12시 (UTC 15:0)에 실행
     - cron: "0 15 * * *"
   
   # 수동 실행 가능
@@ -31,9 +31,8 @@ jobs:
         env:
           NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
           DATABASE_ID: ${{ secrets.DATABASE_ID }}
-          NOTION_DATABASE_ID: ${{ secrets.DATABASE_ID }}  # 👈 main.py가 이 이름을 사용
-          TISTORY_BLOGS: ${{ secrets.TISTORY_BLOGS }}     # 👈 새로 추가!
-          TWITTER_USERNAME: ${{ secrets.TWITTER_USERNAME }} # 👈 새로 추가!
+          NOTION_DATABASE_ID: ${{ secrets.DATABASE_ID }}
+          TISTORY_BLOGS: ${{ secrets.TISTORY_BLOGS }}
       
       - name: ✅ 완료
         run: echo "콘텐츠 업데이트가 완료되었습니다!"
