@@ -1,19 +1,47 @@
 import feedparser
 from datetime import datetime
 from typing import List, Dict
+from urllib.parse import urlparse
 
 class TistoryScraper:
     """티스토리 블로그의 RSS 피드를 파싱하는 클래스"""
     
-    def __init__(self, blog_url: str, blog_name: str = "티스토리"):
+    def __init__(self, blog_url: str, blog_name: str = None):
         """
         Args:
             blog_url: 티스토리 블로그 URL (예: https://yourblog.tistory.com)
+            blog_name: 블로그 이름 (기본값: URL에서 자동 추출)
         """
         self.blog_url = blog_url.rstrip('/')
         # 티스토리 RSS 피드 URL
         self.rss_url = f"{self.blog_url}/rss"
-        self.platform = blog_name
+        
+        # 블로그 이름이 지정되지 않으면 URL에서 추출
+        if blog_name is None:
+            blog_name = self._extract_blog_name(blog_url)
+        
+        self.platform = f"Tistory ({blog_name})"
+    
+    def _extract_blog_name(self, url: str) -> str:
+        """
+        URL에서 블로그 이름을 추출합니다.
+        
+        Args:
+            url: 블로그 URL
+        
+        Returns:
+            str: 블로그 이름
+        """
+        try:
+            # https://pro-editor.tistory.com -> pro-editor
+            # https://custom-domain.com -> custom-domain
+            parsed = urlparse(url)
+            hostname = parsed.hostname or ''
+            # tistory.com 제거
+            blog_name = hostname.replace('.tistory.com', '').replace('www.', '')
+            return blog_name if blog_name else 'tistory'
+        except:
+            return 'tistory'
     
     def fetch_posts(self, limit: int = 50) -> List[Dict]:
         """
@@ -118,8 +146,10 @@ class TistoryScraper:
 
 # 테스트 코드
 if __name__ == "__main__":
-    # 테스트용 블로그 URL
-    test_blog_url = "https://pro-editor.tistory.com"
+    import os
+    
+    # 환경변수에서 티스토리 블로그 URL 가져오기
+    test_blog_url = os.getenv('TISTORY_BLOGS', 'https://pro-editor.tistory.com')
     
     print("=== 티스토리 스크래퍼 테스트 ===\n")
     
