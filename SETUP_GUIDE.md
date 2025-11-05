@@ -52,27 +52,27 @@ https://pro-editor.tistory.com,https://tech-blog.tistory.com
 
 ---
 
-### 🐦 Secret 2: TWITTER_USERNAME (선택)
+### ~🐦 Secret 2: TWITTER_USERNAME (선택)~ 트위터는 안 되서 포기
 
-- **Name**: `TWITTER_USERNAME`
-- **Secret**: 트위터 계정명 입력
+- ~**Name**: `TWITTER_USERNAME`~
+- ~**Secret**: 트위터 계정명 입력~
 
-**단일 계정:**
+~**단일 계정:**~
 ```
-your_username
-```
-
-**여러 계정 (콤마로 구분):**
-```
-account1,account2,account3
+~your_username~
 ```
 
-**예시:**
+~**여러 계정 (콤마로 구분):**~
 ```
-elonmusk,BillGates,nasa
+~account1,account2,account3~
 ```
 
-> ⚠️ 주의: @ 기호는 제외하고 입력하세요!
+~**예시:**~
+```
+~elonmusk,BillGates,nasa~
+```
+
+> ~⚠️ 주의: @ 기호는 제외하고 입력하세요!~
 
 ---
 
@@ -210,18 +210,18 @@ python main.py
 - ✅ 네트워크 연결 확인
 - ✅ 블로그가 비공개 설정인지 확인
 
-### 트위터 관련:
+### ~트위터 관련:~
 
-**"수집된 트윗이 없습니다" 오류:**
-- ✅ 트위터 계정명 확인 (@ 제외)
-- ✅ 최근 트윗 여부 확인
-- ✅ Nitter 인스턴스 상태 확인
-- ✅ 계정이 private이 아닌지 확인
+~**"수집된 트윗이 없습니다" 오류:**~
+- ~✅ 트위터 계정명 확인 (@ 제외)~
+- ~✅ 최근 트윗 여부 확인~
+- ~✅ Nitter 인스턴스 상태 확인~
+- ~✅ 계정이 private이 아닌지 확인~
 
-**Nitter 접속 오류:**
-- ✅ 네트워크 연결 확인
-- ✅ 다른 Nitter 인스턴스로 변경
-- ✅ 잠시 후 다시 시도
+~**Nitter 접속 오류:**~
+- ~✅ 네트워크 연결 확인~
+- ~✅ 다른 Nitter 인스턴스로 변경~
+- ~✅ 잠시 후 다시 시도~
 
 ### Notion 관련:
 
@@ -241,7 +241,7 @@ python main.py
 **Notion에서 구분이 안 될 때:**
 - ✅ 플랫폼 필드가 다음 형식으로 표시되는지 확인:
   - `Tistory (blog-name)`
-  - `Twitter (@username)`
+
 
 ---
 
@@ -251,8 +251,7 @@ python main.py
 
 - `Tistory (pro-editor)` - 티스토리 pro-editor 블로그
 - `Tistory (tech-blog)` - 티스토리 tech-blog 블로그
-- `Twitter (@elonmusk)` - Elon Musk 트위터
-- `Twitter (@BillGates)` - Bill Gates 트위터
+
 
 ### 필터 활용:
 
@@ -266,23 +265,12 @@ python main.py
 플랫폼 contains "Tistory"
 ```
 
-**특정 트위터 계정만 보기:**
-```
-플랫폼 = "Twitter (@elonmusk)"
-```
-
-**모든 트위터 트윗 보기:**
-```
-플랫폼 contains "Twitter"
-```
-
 ---
 
 ## ✅ 설정 완료 체크리스트
 
-- [ ] GitHub Secrets 4개 모두 추가
+- [ ] GitHub Secrets 3개 모두 추가
   - [ ] TISTORY_BLOGS
-  - [ ] TWITTER_USERNAME (선택)
   - [ ] NOTION_API_KEY
   - [ ] NOTION_DATABASE_ID
 - [ ] Notion Integration 생성 및 데이터베이스 연결
@@ -295,7 +283,6 @@ python main.py
 
 이제 매일 자동으로 다음 콘텐츠가 Notion에 수집됩니다:
 - ✅ 티스토리 블로그 글 (여러 블로그 지원)
-- ✅ 트위터 트윗 (여러 계정 지원)
 - 🔜 향후 더 많은 플랫폼 추가 예정!
 
 ---
@@ -324,9 +311,6 @@ python main.py
 ```python
 # 티스토리: 최근 50개만
 posts = tistory.fetch_posts(limit=50)
-
-# 트위터: 최근 200개
-tweets = twitter.fetch_posts(limit=200)
 ```
 
 ---
